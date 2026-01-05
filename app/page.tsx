@@ -2,6 +2,7 @@ import Features from "@/components/landing-page/features";
 import Hero from "@/components/landing-page/hero";
 import HIW from "@/components/landing-page/hiw";
 import Navbar from "@/components/landing-page/navbar";
+import Testimonials from "@/components/landing-page/testimonials";
 
 const Home = () => {
   return (
@@ -10,6 +11,7 @@ const Home = () => {
       <Hero />
       <Features />
       <HIW />
+      <Testimonials />
     </div>
   );
 };
