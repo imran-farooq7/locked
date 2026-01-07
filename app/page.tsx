@@ -1,3 +1,4 @@
+import Faqs from "@/components/landing-page/faqs";
 import Features from "@/components/landing-page/features";
 import Hero from "@/components/landing-page/hero";
 import HIW from "@/components/landing-page/hiw";
@@ -12,6 +13,7 @@ const Home = () => {
       <Features />
       <HIW />
       <Testimonials />
+      <Faqs />
     </div>
   );
 };
