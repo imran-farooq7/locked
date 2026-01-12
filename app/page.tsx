@@ -1,6 +1,7 @@
 import CTA from "@/components/landing-page/cta";
 import Faqs from "@/components/landing-page/faqs";
 import Features from "@/components/landing-page/features";
+import Footer from "@/components/landing-page/footer";
 import Hero from "@/components/landing-page/hero";
 import HIW from "@/components/landing-page/hiw";
 import Navbar from "@/components/landing-page/navbar";
@@ -16,6 +17,7 @@ const Home = () => {
       <Testimonials />
       <Faqs />
       <CTA />
+      <Footer />
     </div>
   );
 };
