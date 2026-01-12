@@ -1,3 +1,4 @@
+import CTA from "@/components/landing-page/cta";
 import Faqs from "@/components/landing-page/faqs";
 import Features from "@/components/landing-page/features";
 import Hero from "@/components/landing-page/hero";
@@ -14,6 +15,7 @@ const Home = () => {
       <HIW />
       <Testimonials />
       <Faqs />
+      <CTA />
     </div>
   );
 };
