@@ -411,6 +411,8 @@ export type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never;
 
+export type Goal = Tables<"goals">;
+
 export const Constants = {
   public: {
     Enums: {},
