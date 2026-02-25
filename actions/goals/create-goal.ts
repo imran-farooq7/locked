@@ -60,8 +60,6 @@ const createGoalSchema = z
   });
 
 export async function createGoalAction(formData: FormData) {
-  const todo = { success: false } as any;
-
   const supabase = await createSupabaseServerClient();
 
   // ensure authenticated
