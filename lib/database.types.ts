@@ -280,7 +280,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      check_expired_goals: { Args: never; Returns: undefined };
     };
     Enums: {
       [_ in never]: never;
@@ -410,8 +410,6 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never;
-
-export type Goal = Tables<"goals">;
 
 export const Constants = {
   public: {
