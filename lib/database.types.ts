@@ -416,3 +416,5 @@ export const Constants = {
     Enums: {},
   },
 } as const;
+
+export type Goal = Tables<"goals">;
