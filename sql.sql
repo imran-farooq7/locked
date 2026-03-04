@@ -125,3 +125,76 @@ where id = expired_goal.id;
 end loop;
 end;
 $$
+-- supabase/storage-policies.sql
+-- Enable storage and create buckets
+insert into storage.buckets (id, name, public)
+values 
+  ('proof-images', 'proof-images', true),
+  ('proof-files', 'proof-files', true),
+  ('user-uploads', 'user-uploads', false);
+
+-- Row Level Security for storage.objects
+create policy "Users can upload their own proof files"
+on storage.objects for insert
+with check (
+  bucket_id in ('proof-images', 'proof-files', 'user-uploads') AND
+  auth.uid()::text = (storage.foldername(name))[1]
+);
+
+create policy "Users can view their own proof files"
+on storage.objects for select
+using (
+  bucket_id in ('proof-images', 'proof-files', 'user-uploads') AND
+  auth.uid()::text = (storage.foldername(name))[1]
+);
+
+create policy "Users can update their own proof files"
+on storage.objects for update
+using (
+  bucket_id in ('proof-images', 'proof-files', 'user-uploads') AND
+  auth.uid()::text = (storage.foldername(name))[1]
+);
+
+create policy "Users can delete their own proof files"
+on storage.objects for delete
+using (
+  bucket_id in ('proof-images', 'proof-files', 'user-uploads') AND
+  auth.uid()::text = (storage.foldername(name))[1]
+);
+
+-- Function to generate secure file paths
+create or replace function generate_proof_file_path(
+  user_id uuid,
+  goal_id uuid,
+  file_name text,
+  file_type text
+)
+returns text
+language plpgsql
+security definer
+as $$
+declare
+  file_ext text;
+  timestamp_str text;
+  random_str text;
+  final_path text;
+begin
+  -- Extract file extension
+  file_ext := split_part(file_name, '.', -1);
+  
+  -- Generate timestamp and random string for uniqueness
+  timestamp_str := to_char(now(), 'YYYYMMDD_HH24MISS');
+  random_str := substr(md5(random()::text), 1, 8);
+  
+  -- Determine bucket based on file type
+  if file_type ilike 'image/%' then
+    final_path := format('%s/%s_%s_%s.%s', 
+      user_id, goal_id, timestamp_str, random_str, file_ext);
+  else
+    final_path := format('%s/%s_%s_%s.%s', 
+      user_id, goal_id, timestamp_str, random_str, file_ext);
+  end if;
+  
+  return final_path;
+end;
+$$;

@@ -2,9 +2,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
-export const dynamic = "force-dynamic";
-
 const CRON_FUNCTION_NAME = "check_expired_goals";
 const CRON_JOB_NAME = "check-deadlines";
 const ERROR_MESSAGE = "Failed to process expired goals";
