@@ -4,7 +4,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { uploadProofFile } from "@/lib/storage/upload-utils";
 import { createSupabaseClient } from "@/lib/supabase/client";
-import { Goal } from "@/lib/database.types";
+import type { Goal } from "@/lib/database.types";
 
 interface ProofSubmissionFormProps {
   goal: Goal;

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typegen": "supabase gen types typescript --project-id $PROJECT_ID > lib/database.types.ts"
+    "typegen": "supabase gen types typescript --project-id zkevnwhxswjwpbcixvny > lib/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -17,7 +17,9 @@
     "next": "^16.1.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "stripe": "^20.1.2"
+    "resend": "^6.9.3",
+    "stripe": "^20.1.2",
+    "supabase": "^2.76.16"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -198,3 +198,64 @@ begin
   return final_path;
 end;
 $$;
+-- supabase/functions/check-recurring-proofs.sql
+create or replace function check_recurring_proofs()
+returns table (
+  goal_id uuid,
+  user_id uuid,
+  last_checkin_date timestamptz,
+  next_checkin_date timestamptz,
+  penalty_amount integer,
+  status text
+)
+language plpgsql
+security definer
+as $$
+begin
+  return query
+  with recurring_goals as (
+    select 
+      g.id as goal_id,
+      g.user_id,
+      g.penalty_amount,
+      g.recurrence,
+      g.frequency,
+      max(gc.due_at) as last_checkin_date,
+      case 
+        when g.recurrence = 'daily' then max(gc.due_at) + interval '1 day' * g.frequency
+        when g.recurrence = 'weekly' then max(gc.due_at) + interval '1 week' * g.frequency
+        when g.recurrence = 'monthly' then max(gc.due_at) + interval '1 month' * g.frequency
+        else null
+      end as next_checkin_date
+    from goals g
+    left join goal_checkins gc on g.id = gc.goal_id
+    where g.status = 'active'
+      and g.recurrence != 'none'
+      and g.proof_required = true
+    group by g.id, g.user_id, g.penalty_amount, g.recurrence, g.frequency
+  ),
+  missing_proofs as (
+    select 
+      rg.goal_id,
+      rg.user_id,
+      rg.last_checkin_date,
+      rg.next_checkin_date,
+      rg.penalty_amount,
+      case 
+        when rg.next_checkin_date < now() then 'overdue'
+        when rg.next_checkin_date <= now() + interval '24 hours' then 'due_soon'
+        else 'upcoming'
+      end as status
+    from recurring_goals rg
+    where not exists (
+      select 1
+      from goal_submissions gs
+      where gs.goal_id = rg.goal_id
+        and gs.created_at >= rg.last_checkin_date
+        and gs.verification_status = 'approved'
+    )
+  )
+  select * from missing_proofs
+  where status in ('overdue', 'due_soon');
+end;
+$$;
