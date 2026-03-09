@@ -2,6 +2,8 @@
 
 import { useCallback, useTransition, useState } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 // Validation patterns
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,6 +56,7 @@ function validateCredentials(credentials: LoginCredentials): {
 export default function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = useCallback(
     async (formData: FormData) => {
@@ -76,6 +79,10 @@ export default function LoginForm() {
           });
 
           if (authError) throw authError;
+          toast.success("Login successful!");
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 3000);
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "Login failed";
