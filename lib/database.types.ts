@@ -343,6 +343,8 @@ export type Database = {
   }
 }
 
+export type Goal = Database["public"]["Tables"]["goals"]["Row"];
+
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

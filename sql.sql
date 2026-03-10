@@ -259,3 +259,85 @@ begin
   where status in ('overdue', 'due_soon');
 end;
 $$;
+-- supabase/functions/process-penalties.sql
+create or replace function process_pending_penalties()
+returns table (
+  processed_count integer,
+  failed_count integer
+)
+language plpgsql
+security definer
+as $$
+declare
+  penalty_record record;
+  customer_id text;
+  charge_result jsonb;
+  processed integer := 0;
+  failed integer := 0;
+begin
+  -- Get pending penalties that are due
+  for penalty_record in
+    select 
+      pc.*,
+      p.stripe_customer_id,
+      g.title as goal_title
+    from penalty_charges pc
+    join profiles p on pc.user_id = p.id
+    join goals g on pc.goal_id = g.id
+    where pc.status = 'pending'
+      and pc.due_date <= now()
+      and pc.charge_attempts < 3
+    order by pc.due_date
+    limit 10 -- Process in batches
+  loop
+    begin
+      -- Call Stripe API via edge function
+      -- This would trigger a webhook to app/api/stripe/charge-penalty
+      
+      -- For demo purposes, simulate charge
+      update penalty_charges
+      set 
+        status = 'charged',
+        stripe_charge_id = 'ch_sim_' || penalty_record.id,
+        charged_at = now(),
+        charge_attempts = charge_attempts + 1
+      where id = penalty_record.id;
+      
+      processed := processed + 1;
+      
+      -- Create notification for user
+      insert into notifications (
+        user_id,
+        type,
+        title,
+        message,
+        metadata
+      ) values (
+        penalty_record.user_id,
+        'penalty_charged',
+        'Penalty Charged',
+        format('A penalty of $%s was charged for goal: %s', 
+               penalty_record.amount / 100, 
+               penalty_record.goal_title),
+        jsonb_build_object(
+          'goal_id', penalty_record.goal_id,
+          'charge_id', 'ch_sim_' || penalty_record.id,
+          'amount', penalty_record.amount
+        )
+      );
+      
+    exception when others then
+      -- Log failure and increment attempt count
+      update penalty_charges
+      set 
+        charge_attempts = charge_attempts + 1,
+        last_attempt_at = now()
+      where id = penalty_record.id;
+      
+      failed := failed + 1;
+    end;
+  end loop;
+  
+  return query select processed, failed;
+end;
+$$;
