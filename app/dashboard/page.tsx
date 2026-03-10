@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import GoalsList from "@/components/goals/goals-list";
 import CreateGoalButton from "@/components/goals/create-goal-button";
+import LogoutButton from "@/components/auth/logout-button";
 import { calculateTimeRemaining, isGoalExpired } from "@/lib/goal-utils";
 import { redirect } from "next/navigation";
 
@@ -92,7 +93,10 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-bold">Your Goals</h1>
           <p className="text-gray-600">Track, commit, and stay accountable</p>
         </div>
-        <CreateGoalButton />
+        <div className="flex items-center gap-2">
+          <CreateGoalButton />
+          <LogoutButton />
+        </div>
       </div>
 
       {/* Stats Overview */}
