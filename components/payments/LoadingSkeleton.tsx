@@ -1,8 +1,7 @@
 // components/payments/payment-methods.tsx
-"use client";
-export const LoadingSkeleton = () => (
+export const LoadingSkeleton = ({ items = 2 }: { items?: number }) => (
   <div className="space-y-4">
-    {[...Array(2)].map((_, i) => (
+    {[...Array(items)].map((_, i) => (
       <div key={i} className="animate-pulse rounded-lg border p-4">
         <div className="h-6 bg-gray-200 rounded mb-2"></div>
         <div className="h-4 bg-gray-200 rounded"></div>
