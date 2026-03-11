@@ -341,3 +341,15 @@ begin
   return query select processed, failed;
 end;
 $$;
+-- // refund_requests
+CREATE TABLE IF NOT EXISTS public.refund_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  stripe_charge_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled')),
+  amount INTEGER NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);

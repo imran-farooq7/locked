@@ -275,6 +275,50 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_requests: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          reason: string
+          status: string | null
+          stripe_charge_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          reason: string
+          status?: string | null
+          stripe_charge_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          status?: string | null
+          stripe_charge_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string | null
@@ -333,6 +377,13 @@ export type Database = {
         }
         Returns: string
       }
+      process_pending_penalties: {
+        Args: never
+        Returns: {
+          failed_count: number
+          processed_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -342,8 +393,6 @@ export type Database = {
     }
   }
 }
-
-export type Goal = Database["public"]["Tables"]["goals"]["Row"];
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
