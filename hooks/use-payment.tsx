@@ -1,5 +1,5 @@
 import { createSupabaseClient } from "@/lib/supabase/client";
-import { useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 export interface PaymentMethod {
   id: string;
   brand: string;
@@ -12,9 +12,9 @@ export const usePaymentMethods = () => {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [isPending, startTransition] = useTransition();
 
-  const supabase = createSupabaseClient();
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
-  const loadPaymentMethods = () => {
+  const loadPaymentMethods = useCallback(() => {
     startTransition(async () => {
       try {
         const {
@@ -22,11 +22,16 @@ export const usePaymentMethods = () => {
         } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from("profiles")
           .select("stripe_customer_id")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
+
+        if (error) {
+          console.error("Profile lookup failed:", error);
+          return;
+        }
 
         if (profile?.stripe_customer_id) {
           // In production, fetch from Stripe API
@@ -54,7 +59,7 @@ export const usePaymentMethods = () => {
         console.error("Failed to load payment methods:", error);
       }
     });
-  };
+  }, [supabase]);
 
   const addPaymentMethod = () => {
     // This would integrate with Stripe Elements
