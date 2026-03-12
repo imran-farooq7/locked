@@ -4,7 +4,7 @@ import {
   corsHeaders,
   createEdgeSupabaseClient,
   handleCors,
-} from "../_shared/cors.ts";
+} from "@/supabase/functions/_shared/cors";
 
 const MAX_RETRIES = 3;
 const BATCH_SIZE = 50;

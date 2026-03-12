@@ -182,6 +182,77 @@ export type Database = {
           },
         ]
       }
+      job_queue: {
+        Row: {
+          attempt_count: number | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          error_message: string | null
+          error_stack: string | null
+          id: string
+          job_type: string
+          last_attempt_at: string | null
+          max_attempts: number | null
+          next_attempt_at: string | null
+          payload: Json | null
+          priority: number | null
+          result: Json | null
+          scheduled_for: string | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          id?: string
+          job_type: string
+          last_attempt_at?: string | null
+          max_attempts?: number | null
+          next_attempt_at?: string | null
+          payload?: Json | null
+          priority?: number | null
+          result?: Json | null
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attempt_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          id?: string
+          job_type?: string
+          last_attempt_at?: string | null
+          max_attempts?: number | null
+          next_attempt_at?: string | null
+          payload?: Json | null
+          priority?: number | null
+          result?: Json | null
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_queue_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       penalty_charges: {
         Row: {
           amount: number
@@ -367,6 +438,57 @@ export type Database = {
           status: string
           user_id: string
         }[]
+      }
+      complete_job: {
+        Args: { p_job_id: string; p_result?: Json }
+        Returns: undefined
+      }
+      enqueue_job: {
+        Args: {
+          p_job_type: string
+          p_max_attempts?: number
+          p_payload?: Json
+          p_priority?: number
+          p_scheduled_for?: string
+        }
+        Returns: string
+      }
+      fail_job: {
+        Args: {
+          p_error_message: string
+          p_error_stack?: string
+          p_job_id: string
+        }
+        Returns: undefined
+      }
+      fetch_next_job: {
+        Args: never
+        Returns: {
+          attempt_count: number | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          error_message: string | null
+          error_stack: string | null
+          id: string
+          job_type: string
+          last_attempt_at: string | null
+          max_attempts: number | null
+          next_attempt_at: string | null
+          payload: Json | null
+          priority: number | null
+          result: Json | null
+          scheduled_for: string | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "job_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       generate_proof_file_path: {
         Args: {

@@ -353,3 +353,163 @@ CREATE TABLE IF NOT EXISTS public.refund_requests (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- supabase/schema/jobs.sql
+create table job_queue (
+  id uuid default gen_random_uuid() primary key,
+  job_type text not null,
+  payload jsonb default '{}',
+  status text default 'pending' check (status in ('pending', 'processing', 'completed', 'failed', 'retry')),
+  
+  -- Priority: 1 (high) to 5 (low)
+  priority integer default 3 check (priority between 1 and 5),
+  
+  -- Retry logic
+  max_attempts integer default 3,
+  attempt_count integer default 0,
+  last_attempt_at timestamptz,
+  next_attempt_at timestamptz default now(),
+  
+  -- Timing
+  scheduled_for timestamptz default now(),
+  started_at timestamptz,
+  completed_at timestamptz,
+  
+  -- Results
+  result jsonb,
+  error_message text,
+  error_stack text,
+  
+  -- Metadata
+  created_by uuid references profiles(id),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Indexes for efficient job fetching
+create index idx_job_queue_status on job_queue(status);
+create index idx_job_queue_scheduled on job_queue(scheduled_for) where status = 'pending';
+create index idx_job_queue_retry on job_queue(next_attempt_at) where status = 'retry';
+create index idx_job_queue_priority on job_queue(priority);
+
+-- Function to enqueue a job
+create or replace function enqueue_job(
+  p_job_type text,
+  p_payload jsonb default '{}',
+  p_priority integer default 3,
+  p_scheduled_for timestamptz default now(),
+  p_max_attempts integer default 3
+)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  v_job_id uuid;
+begin
+  insert into job_queue (
+    job_type,
+    payload,
+    priority,
+    scheduled_for,
+    max_attempts
+  ) values (
+    p_job_type,
+    p_payload,
+    p_priority,
+    p_scheduled_for,
+    p_max_attempts
+  ) returning id into v_job_id;
+  
+  return v_job_id;
+end;
+$$;
+
+-- Function to fetch next job
+create or replace function fetch_next_job()
+returns setof job_queue
+language plpgsql
+security definer
+as $$
+begin
+  return query
+  update job_queue j
+  set 
+    status = 'processing',
+    started_at = now(),
+    attempt_count = attempt_count + 1,
+    updated_at = now()
+  where j.id = (
+    select id 
+    from job_queue 
+    where status in ('pending', 'retry')
+      and scheduled_for <= now()
+      and (next_attempt_at is null or next_attempt_at <= now())
+    order by priority asc, scheduled_for asc
+    limit 1
+    for update skip locked
+  )
+  returning j.*;
+end;
+$$;
+
+-- Function to mark job as completed
+create or replace function complete_job(
+  p_job_id uuid,
+  p_result jsonb default null
+)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  update job_queue
+  set 
+    status = 'completed',
+    completed_at = now(),
+    result = p_result,
+    updated_at = now()
+  where id = p_job_id;
+end;
+$$;
+
+-- Function to mark job as failed
+create or replace function fail_job(
+  p_job_id uuid,
+  p_error_message text,
+  p_error_stack text default null
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_max_attempts integer;
+  v_attempt_count integer;
+begin
+  select max_attempts, attempt_count
+  into v_max_attempts, v_attempt_count
+  from job_queue
+  where id = p_job_id;
+  
+  if v_attempt_count >= v_max_attempts then
+    -- Max attempts reached, mark as permanently failed
+    update job_queue
+    set 
+      status = 'failed',
+      error_message = p_error_message,
+      error_stack = p_error_stack,
+      updated_at = now()
+    where id = p_job_id;
+  else
+    -- Schedule retry with exponential backoff
+    update job_queue
+    set 
+      status = 'retry',
+      error_message = p_error_message,
+      error_stack = p_error_stack,
+      next_attempt_at = now() + (interval '5 minutes' * power(2, v_attempt_count - 1)),
+      updated_at = now()
+    where id = p_job_id;
+  end if;
+end;
+$$;
