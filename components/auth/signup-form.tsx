@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createSupabaseClient } from "@/lib/supabase/client";
+import { signupAction } from "@/actions/auth/signup";
 import { Eye, EyeOff, Loader2, CheckCircle, XCircle } from "lucide-react";
 
 export default function SignupForm() {
@@ -31,7 +31,6 @@ export default function SignupForm() {
   });
 
   const router = useRouter();
-  const supabase = createSupabaseClient();
 
   // Password validation
   const validatePassword = (password: string) => {
@@ -115,41 +114,34 @@ export default function SignupForm() {
     setError(null);
 
     try {
-      // Sign up with Supabase
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+      // Create FormData for server action
+      const formDataToSend = new FormData();
+      formDataToSend.append("email", formData.email);
+      formDataToSend.append("password", formData.password);
+      formDataToSend.append("fullName", formData.fullName);
 
-      if (signUpError) throw signUpError;
+      // Call server action
+      const result = await signupAction(formDataToSend);
 
-      if (data.user) {
+      if (result.success) {
         setSuccess(true);
 
         // Auto redirect after 3 seconds
         setTimeout(() => {
           router.push("/dashboard");
         }, 3000);
+      } else {
+        // Handle validation errors
+        if (result.errors) {
+          const errorMessages = Object.values(result.errors).flat();
+          setError(errorMessages.join(", "));
+        } else {
+          setError(result.error || "Failed to sign up. Please try again.");
+        }
       }
     } catch (err: any) {
       console.error("Signup error:", err);
-
-      // Handle specific error messages
-      if (err.message.includes("User already registered")) {
-        setError("An account with this email already exists");
-      } else if (
-        err.message.includes("Password should be at least 6 characters")
-      ) {
-        setError("Password must be at least 6 characters long");
-      } else {
-        setError(err.message || "Failed to sign up. Please try again.");
-      }
+      setError(err.message || "Failed to sign up. Please try again.");
     } finally {
       setIsLoading(false);
     }

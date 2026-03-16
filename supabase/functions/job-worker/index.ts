@@ -139,9 +139,6 @@ async function handleProofReminder(payload: any, supabase: any) {
     .single();
 
   // Send reminder email (mock implementation)
-  console.log(
-    `Sending proof reminder to ${user.email} for goal: ${goal.title}`,
-  );
 
   return { sent: true, email: user.email, goal: goal.title };
 }

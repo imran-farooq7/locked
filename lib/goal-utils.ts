@@ -37,16 +37,16 @@ export const calculateDailyDeadline = (hour: number = 21): Date => {
 
 export const calculateNextCheckin = (
   targetDate: DateValue,
-  recurrence: "none" | "daily" | "weekly" | "monthly",
+  recurrence: "none" | "day" | "week" | "month",
 ): Date => {
   const now = new Date();
 
   switch (recurrence) {
-    case "daily":
+    case "day":
       return addDays(now, 1);
-    case "weekly":
+    case "week":
       return addWeeks(now, 1);
-    case "monthly":
+    case "month":
       return addMonths(now, 1);
     case "none":
     default:

@@ -67,7 +67,7 @@ export default function CreateGoalButton() {
               </button>
             </div>
 
-            <CreateGoalForm />
+            <CreateGoalForm setIsOpen={setIsOpen} />
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { useMemo, useReducer, useState } from "react";
 import { createGoalAction } from "@/actions/goals/create-goal";
 import { getNextMonday, calculateDailyDeadline } from "@/lib/goal-utils";
 import { format } from "date-fns";
+import toast from "react-hot-toast";
 
 type ProofType = "text" | "image" | "file";
 type Recurrence = "none" | "daily" | "weekly" | "monthly";
@@ -40,7 +41,11 @@ function reducer(state: FormState, action: Action): FormState {
   return { ...state, [action.field]: action.value };
 }
 
-export default function CreateGoalForm() {
+export default function CreateGoalForm({
+  setIsOpen,
+}: {
+  setIsOpen: (isOpen: boolean) => void;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
@@ -97,7 +102,8 @@ export default function CreateGoalForm() {
     if (result.success) {
       dispatch({ type: "reset" });
       // TODO: replace with better UX (toast / redirect)
-      alert("Goal created successfully!");
+      toast.success("Goal created successfully!");
+      setIsOpen(false);
     } else if (result.errors) {
       setErrors(result.errors as Record<string, string[]>);
     } else if (result.error) {
@@ -256,9 +262,9 @@ export default function CreateGoalForm() {
               className="w-full border rounded-lg p-3"
             >
               <option value="none">No recurrence</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
+              <option value="day">day</option>
+              <option value="week">week</option>
+              <option value="month">month</option>
             </select>
           </div>
 

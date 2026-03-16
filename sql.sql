@@ -25,16 +25,6 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Create RLS policies for profiles
-create policy "Users can view own profile"
-  on profiles for select
-  using (auth.uid() = id);
-
-create policy "Users can update own profile"
-  on profiles for update
-  using (auth.uid() = id);
-$$
-
 -- Minimal fix for existing policies
 DO $$ 
 BEGIN
@@ -61,6 +51,18 @@ BEGIN
     CREATE POLICY "Users can update own profile"
       ON profiles FOR UPDATE
       USING (auth.uid() = id);
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'profiles' 
+    AND policyname = 'Users can insert own profile'
+  ) THEN
+    RAISE NOTICE 'Policy already exists, skipping creation';
+  ELSE
+    CREATE POLICY "Users can insert own profile"
+      ON profiles FOR INSERT
+      WITH CHECK (auth.uid() = id);
   END IF;
 END $$;
 

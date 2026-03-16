@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
@@ -187,7 +186,6 @@ const handleSubscriptionDeleted = async (
   }
 };
 const handleChargeSucceeded = async (charge: Stripe.Charge, supabase: any) => {
-  console.log(`Charge succeeded: ${charge.id}`);
 
   // Log charge for reconciliation
   await supabase.from("charges").insert({
@@ -205,7 +203,6 @@ const handleInvoicePaymentFailed = async (
   invoice: Stripe.Invoice,
   supabase: any,
 ) => {
-  console.log(`Invoice payment failed: ${invoice.id}`);
 
   const subscriptionRef = invoice.parent?.subscription_details?.subscription;
   const subscriptionId =
@@ -243,7 +240,6 @@ const handleSubscriptionUpdated = async (
   subscription: Stripe.Subscription,
   supabase: any,
 ) => {
-  console.log(`Subscription updated: ${subscription.id}`);
 
   const goalId = subscription.metadata.goal_id;
 
@@ -258,7 +254,6 @@ const handleSubscriptionUpdated = async (
   }
 };
 const handleChargeRefunded = async (charge: Stripe.Charge, supabase: any) => {
-  console.log(`Charge refunded: ${charge.id}`);
 
   // Find and update the penalty charge
   const { data: penalty } = await supabase

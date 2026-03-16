@@ -1,139 +1,135 @@
 // actions/goals/create-goal.ts
 "use server";
 
-import { calculateNextCheckin } from "@/lib/goal-utils";
-// import { createStripeSubscription } from "@/lib/stripe/subscriptions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { stripe } from "@/lib/stripe/client";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import {
+  getNextMonday,
+  calculateDailyDeadline,
+  calculateNextCheckin,
+} from "@/lib/goal-utils";
+import { createStripeSubscription } from "@/lib/stripe/subscriptions";
 
-// Validate incoming form data (coerce types from FormData)
-const createGoalSchema = z
-  .object({
-    title: z.string().min(1).max(100),
-    description: z.string().max(500).optional().nullable(),
-    targetDate: z
-      .preprocess((v) => (typeof v === "string" ? v : String(v)), z.string())
-      .refine(
-        (date) => {
-          const selected = new Date(date);
-          if (Number.isNaN(selected.getTime())) return false;
-          const tomorrow = new Date();
-          tomorrow.setHours(0, 0, 0, 0);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          return selected >= tomorrow;
-        },
-        { message: "Target date must be at least tomorrow" },
-      ),
+// Zod schema for goal validation
+const createGoalSchema = z.object({
+  title: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  targetDate: z.string().refine((date) => {
+    const selectedDate = new Date(date);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return selectedDate >= tomorrow;
+  }, "Target date must be at least tomorrow"),
 
-    // Penalty is stored as integer cents (100 = $1.00)
-    penaltyAmount: z.preprocess(
-      (v) => Number(v),
-      z.number().int().min(100).max(50000),
-    ),
+  penaltyAmount: z
+    .number()
+    .min(100, "Minimum penalty is $1.00")
+    .max(50000, "Maximum penalty is $500.00"),
 
-    proofRequired: z
-      .preprocess((v) => v === "true" || v === true, z.boolean())
-      .default(false),
-    proofType: z.preprocess(
-      (v) => (typeof v === "string" ? v : undefined),
-      z.enum(["text", "image", "file"]).optional(),
-    ),
-
-    recurrence: z.preprocess(
-      (v) => (typeof v === "string" ? v : "none"),
-      z.enum(["none", "daily", "weekly", "monthly"]).default("none"),
-    ),
-    frequency: z.preprocess(
-      (v) => Number(v || 1),
-      z.number().int().min(1).max(30).default(1),
-    ),
-  })
-  .superRefine((val, ctx) => {
-    if (val.proofRequired && !val.proofType) {
-      ctx.addIssue({
-        path: ["proofType"],
-        code: z.ZodIssueCode.custom,
-        message: "proofType is required when proofRequired is true",
-      });
-    }
-  });
+  proofRequired: z.boolean().default(false),
+  proofType: z.enum(["text", "image", "file"]).optional(),
+  // Recurrence options
+  recurrence: z.enum(["none", "day", "month", "week"]).default("none"),
+  frequency: z.number().min(1).max(30).default(1),
+});
 
 export async function createGoalAction(formData: FormData) {
   const supabase = await createSupabaseServerClient();
 
-  // ensure authenticated
+  // Get current user
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("User not authenticated");
 
-  // fetch profile for stripe customer id (if payments are needed later)
-  const { data: profile, error: profileError } = await supabase
+  // Get user profile for Stripe customer ID
+  const { data: profile } = await supabase
     .from("profiles")
     .select("stripe_customer_id")
     .eq("id", user.id)
     .single();
 
-  if (profileError) {
-    console.error("Profile lookup failed:", profileError);
-    throw profileError;
-  }
-
   if (!profile?.stripe_customer_id) {
-    // don't fail validation here — surface a clear message
     throw new Error(
       "Stripe customer not found. Please update your payment information.",
     );
   }
 
-  // Build a plain object from FormData and let Zod coerce types
-  const obj = Object.fromEntries(formData.entries());
+  // Parse and validate form data
+  const rawData = {
+    title: formData.get("title") as string,
+    description: formData.get("description") as string,
+    targetDate: formData.get("targetDate") as string,
+    penaltyAmount: Number(formData.get("penaltyAmount")),
+    proofRequired: formData.get("proofRequired") === "true",
+    proofType: formData.get("proofType") as
+      | "text"
+      | "image"
+      | "file"
+      | undefined,
+    recurrence: formData.get("recurrence") as
+      | "none"
+      | "daily"
+      | "weekly"
+      | "monthly",
+    frequency: Number(formData.get("frequency")),
+  };
 
-  const parsed = createGoalSchema.safeParse(obj);
-  if (!parsed.success) {
-    return { success: false, errors: parsed.error.flatten().fieldErrors };
+  const validation = createGoalSchema.safeParse(rawData);
+  if (!validation.success) {
+    return {
+      success: false,
+      errors: validation.error.flatten().fieldErrors,
+    };
   }
 
-  const data = parsed.data;
+  const data = validation.data;
 
   try {
-    // TODO: create Stripe subscription if implementing recurring penalties
-    // const stripeSubscription = await createStripeSubscription({ ... });
+    // 1. Create Stripe subscription for recurring penalty
+    const stripeSubscription = await createStripeSubscription({
+      customerId: profile.stripe_customer_id,
+      penaltyAmount: data.penaltyAmount,
+      recurrence: data.recurrence,
+      frequency: data.frequency,
+      goalTitle: data.title,
+    });
 
-    // Insert goal into DB. Use ISO strings for dates and store penalty in cents.
-    const targetIso = new Date(data.targetDate).toISOString();
+    if (!stripeSubscription.success) {
+      throw stripeSubscription.error;
+    }
 
+    // 2. Create goal in database
     const { data: goal, error: goalError } = await supabase
       .from("goals")
       .insert({
         user_id: user.id,
         title: data.title,
-        description: data.description ?? null,
-        target_date: targetIso,
+        description: data.description,
+        target_date: data.targetDate,
         penalty_amount: data.penaltyAmount,
         currency: "usd",
         status: "active",
         proof_required: data.proofRequired,
-        proof_type: data.proofType ?? null,
-        // stripe_subscription_id: stripeSubscription?.id ?? null,
-        // stripe_price_id: stripeSubscription?.priceId ?? null,
+        proof_type: data.proofType,
+        stripe_subscription_id: stripeSubscription.data.subscriptionId,
+        stripe_price_id: stripeSubscription.data.priceId,
       })
       .select()
       .single();
 
     if (goalError) throw goalError;
 
-    // Calculate the first check-in using a Date (goal.target_date should be an ISO string)
-    const nextCheckin = calculateNextCheckin(
-      new Date(goal.target_date),
-      data.recurrence,
-    );
+    // 3. Create initial check-in deadline
+    const nextCheckin = calculateNextCheckin(goal.target_date, data.recurrence);
 
     await supabase.from("goal_checkins").insert({
       goal_id: goal.id,
       user_id: user.id,
-      due_at: nextCheckin.toISOString(),
+      due_at: nextCheckin.toLocaleDateString(),
       status: "pending",
     });
 
@@ -143,7 +139,7 @@ export async function createGoalAction(formData: FormData) {
     console.error("Goal creation error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : "Failed to create goal",
     };
   }
 }

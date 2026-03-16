@@ -78,14 +78,14 @@ function ProofGuidelines() {
 
 function QuickActions() {
   const actions = [
-    { label: "View Proof History", action: () => console.log("View history") },
+    { label: "View Proof History", action: () => {} },
     {
       label: "Download All Proofs",
-      action: () => console.log("Download proofs"),
+      action: () => {},
     },
     {
       label: "Request Proof Review",
-      action: () => console.log("Request review"),
+      action: () => {},
     },
   ];
 

@@ -27,13 +27,14 @@ type SignupInput = z.infer<typeof signupSchema>;
 
 // Separate concern: Create Stripe customer for new user
 async function createStripeCustomer(userId: string, data: SignupInput) {
-  return stripe.customers.create({
+  const customer = await stripe.customers.create({
     email: data.email,
     name: data.fullName || undefined,
     metadata: {
       supabase_user_id: userId,
     },
   });
+  return customer;
 }
 
 // Separate concern: Update user profile with Stripe customer ID
