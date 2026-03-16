@@ -515,3 +515,139 @@ begin
   end if;
 end;
 $$;
+-- supabase/schema/alerts.sql
+create table job_alerts (
+  id uuid default gen_random_uuid() primary key,
+  
+  -- Alert configuration
+  alert_type text not null check (alert_type in ('job_failed', 'job_stuck', 'queue_backlog', 'system_error')),
+  threshold integer not null,
+  comparison text not null check (comparison in ('greater_than', 'less_than', 'equals')),
+  
+  -- Notification settings
+  notify_email boolean default true,
+  notify_slack boolean default false,
+  notify_webhook boolean default false,
+  
+  -- Recipients
+  email_recipients text[],
+  slack_webhook_url text,
+  webhook_url text,
+  
+  -- Alert status
+  enabled boolean default true,
+  last_triggered_at timestamptz,
+  trigger_count integer default 0,
+  
+  -- Metadata
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table alert_history (
+  id uuid default gen_random_uuid() primary key,
+  alert_id uuid references job_alerts(id) on delete cascade,
+  
+  -- Alert details
+  alert_type text not null,
+  severity text not null check (severity in ('critical', 'warning', 'info')),
+  message text not null,
+  context jsonb default '{}',
+  
+  -- Delivery status
+  email_sent boolean default false,
+  slack_sent boolean default false,
+  webhook_sent boolean default false,
+  
+  created_at timestamptz default now()
+);
+
+-- Function to check and trigger alerts
+create or replace function check_job_alerts()
+returns table (
+  alerts_triggered integer,
+  alerts_skipped integer
+)
+language plpgsql
+security definer
+as $$
+declare
+  alert_record record;
+  current_value integer;
+  should_trigger boolean;
+  alerts_triggered integer := 0;
+  alerts_skipped integer := 0;
+begin
+  for alert_record in
+    select * from job_alerts where enabled = true
+  loop
+    -- Get current value based on alert type
+    case alert_record.alert_type
+      when 'job_failed' then
+        select count(*) into current_value
+        from job_queue
+        where status = 'failed'
+          and created_at > now() - interval '1 hour';
+      
+      when 'job_stuck' then
+        select count(*) into current_value
+        from job_queue
+        where status = 'processing'
+          and started_at < now() - interval '30 minutes';
+      
+      when 'queue_backlog' then
+        select count(*) into current_value
+        from job_queue
+        where status in ('pending', 'retry');
+      
+      else
+        current_value := 0;
+    end case;
+    
+    -- Check threshold
+    case alert_record.comparison
+      when 'greater_than' then
+        should_trigger := current_value > alert_record.threshold;
+      when 'less_than' then
+        should_trigger := current_value < alert_record.threshold;
+      when 'equals' then
+        should_trigger := current_value = alert_record.threshold;
+    end case;
+    
+    if should_trigger then
+      -- Create alert history
+      insert into alert_history (
+        alert_id,
+        alert_type,
+        severity,
+        message,
+        context
+      ) values (
+        alert_record.id,
+        alert_record.alert_type,
+        case when current_value > alert_record.threshold * 2 then 'critical' else 'warning' end,
+        format('%s alert: Current value %s exceeds threshold %s', 
+               alert_record.alert_type, current_value, alert_record.threshold),
+        jsonb_build_object(
+          'current_value', current_value,
+          'threshold', alert_record.threshold,
+          'comparison', alert_record.comparison
+        )
+      );
+      
+      -- Update alert record
+      update job_alerts
+      set 
+        last_triggered_at = now(),
+        trigger_count = trigger_count + 1
+      where id = alert_record.id;
+      
+      alerts_triggered := alerts_triggered + 1;
+    else
+      alerts_skipped := alerts_skipped + 1;
+    end if;
+  end loop;
+  
+  return query select alerts_triggered, alerts_skipped;
+end;
+$$;
