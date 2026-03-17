@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_history: {
+        Row: {
+          alert_id: string | null
+          alert_type: string
+          context: Json | null
+          created_at: string | null
+          email_sent: boolean | null
+          id: string
+          message: string
+          severity: string
+          slack_sent: boolean | null
+          webhook_sent: boolean | null
+        }
+        Insert: {
+          alert_id?: string | null
+          alert_type: string
+          context?: Json | null
+          created_at?: string | null
+          email_sent?: boolean | null
+          id?: string
+          message: string
+          severity: string
+          slack_sent?: boolean | null
+          webhook_sent?: boolean | null
+        }
+        Update: {
+          alert_id?: string | null
+          alert_type?: string
+          context?: Json | null
+          created_at?: string | null
+          email_sent?: boolean | null
+          id?: string
+          message?: string
+          severity?: string
+          slack_sent?: boolean | null
+          webhook_sent?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_history_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "job_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_checkins: {
         Row: {
           completed_at: string | null
@@ -181,6 +228,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      job_alerts: {
+        Row: {
+          alert_type: string
+          comparison: string
+          created_at: string | null
+          email_recipients: string[] | null
+          enabled: boolean | null
+          id: string
+          last_triggered_at: string | null
+          notify_email: boolean | null
+          notify_slack: boolean | null
+          notify_webhook: boolean | null
+          slack_webhook_url: string | null
+          threshold: number
+          trigger_count: number | null
+          updated_at: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          alert_type: string
+          comparison: string
+          created_at?: string | null
+          email_recipients?: string[] | null
+          enabled?: boolean | null
+          id?: string
+          last_triggered_at?: string | null
+          notify_email?: boolean | null
+          notify_slack?: boolean | null
+          notify_webhook?: boolean | null
+          slack_webhook_url?: string | null
+          threshold: number
+          trigger_count?: number | null
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          alert_type?: string
+          comparison?: string
+          created_at?: string | null
+          email_recipients?: string[] | null
+          enabled?: boolean | null
+          id?: string
+          last_triggered_at?: string | null
+          notify_email?: boolean | null
+          notify_slack?: boolean | null
+          notify_webhook?: boolean | null
+          slack_webhook_url?: string | null
+          threshold?: number
+          trigger_count?: number | null
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
       }
       job_queue: {
         Row: {
@@ -428,6 +529,13 @@ export type Database = {
     }
     Functions: {
       check_expired_goals: { Args: never; Returns: undefined }
+      check_job_alerts: {
+        Args: never
+        Returns: {
+          alerts_skipped: number
+          alerts_triggered: number
+        }[]
+      }
       check_recurring_proofs: {
         Args: never
         Returns: {
@@ -506,6 +614,7 @@ export type Database = {
           processed_count: number
         }[]
       }
+      vacuum_analyze_tables: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

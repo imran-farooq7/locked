@@ -651,3 +651,39 @@ begin
   return query select alerts_triggered, alerts_skipped;
 end;
 $$;
+-- supabase/functions/vacuum-analyze.sql
+create or replace function vacuum_analyze_tables()
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  table_record record;
+begin
+  -- Only vacuum analyze tables that need it (large tables)
+  for table_record in
+    select tablename
+    from pg_tables
+    where schemaname = 'public'
+      and tablename in (
+        'job_queue',
+        'penalty_charges',
+        'goal_submissions',
+        'notifications'
+      )
+  loop
+    -- Analyze table (update statistics)
+    execute format('analyze %I', table_record.tablename);
+    
+    -- Vacuum if needed (based on table size)
+    if exists (
+      select 1
+      from pg_stat_user_tables
+      where relname = table_record.tablename
+        and n_dead_tup > 1000
+    ) then
+      execute format('vacuum %I', table_record.tablename);
+    end if;
+  end loop;
+end;
+$$;
