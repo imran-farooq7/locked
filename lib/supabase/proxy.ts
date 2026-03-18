@@ -41,11 +41,38 @@ export async function updateSession(request: NextRequest) {
 
   const user = data?.claims;
 
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
-    // no user, potentially respond by redirecting the user to the login page
+  // Determine auth-required sections.
+  const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard");
+  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
+
+  if (!user && (isDashboardRoute || isAdminRoute)) {
+    // no user, redirect to login
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    if (isAdminRoute) url.searchParams.set("redirect", "/admin");
     return NextResponse.redirect(url);
+  }
+
+  // If the request is for an admin route, ensure the user is an admin.
+  if (user && isAdminRoute) {
+    // user id can be in different claim keys depending on auth setup
+    const userId =
+      (user as any).sub ?? (user as any).user_id ?? (user as any).id ?? null;
+
+    if (userId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", userId)
+        .single();
+
+      if (!profile?.is_admin) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        url.searchParams.set("redirect", "/admin");
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

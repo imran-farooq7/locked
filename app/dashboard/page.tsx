@@ -33,6 +33,12 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
   const { data: goals } = await supabase
     .from("goals")
     .select("*")
@@ -94,6 +100,14 @@ export default async function DashboardPage() {
           <p className="text-gray-600">Track, commit, and stay accountable</p>
         </div>
         <div className="flex items-center gap-2">
+          {profile?.is_admin && (
+            <a
+              href="/admin"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              Admin Panel
+            </a>
+          )}
           <CreateGoalButton />
           <LogoutButton />
         </div>
