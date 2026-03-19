@@ -426,7 +426,9 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_active: boolean | null
           is_admin: boolean | null
+          last_sign_in_at: string | null
           stripe_customer_id: string | null
           updated_at: string | null
         }
@@ -435,7 +437,9 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_active?: boolean | null
           is_admin?: boolean | null
+          last_sign_in_at?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
         }
@@ -444,7 +448,9 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
           is_admin?: boolean | null
+          last_sign_in_at?: string | null
           stripe_customer_id?: string | null
           updated_at?: string | null
         }
