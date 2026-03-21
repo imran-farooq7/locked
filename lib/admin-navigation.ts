@@ -34,21 +34,16 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: Users,
     badge: null,
   },
+
   {
-    title: "Goals",
-    href: "/admin/goals",
-    icon: Target,
-    badge: null,
-  },
-  {
-    title: "Payments",
-    href: "/admin/payments",
+    title: "Refunds",
+    href: "/admin/refunds",
     icon: CreditCard,
     badge: null,
   },
   {
-    title: "Proofs",
-    href: "/admin/proofs",
+    title: "Verifications",
+    href: "/admin/verifications",
     icon: FileText,
     badge: null,
   },
