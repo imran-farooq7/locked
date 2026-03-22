@@ -53,28 +53,11 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: BarChart3,
     badge: null,
   },
-  {
-    title: "Notifications",
-    href: "/admin/notifications",
-    icon: Bell,
-    badge: null,
-  },
+
   {
     title: "Jobs",
     href: "/admin/jobs",
     icon: Activity,
-    badge: null,
-  },
-  {
-    title: "Database",
-    href: "/admin/database",
-    icon: Database,
-    badge: null,
-  },
-  {
-    title: "Security",
-    href: "/admin/security",
-    icon: Shield,
     badge: null,
   },
   {
