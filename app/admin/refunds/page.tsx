@@ -1,6 +1,6 @@
 // app/admin/refunds/page.tsx
 import { Suspense } from "react";
-import RefundsContent from "./refunds-content";
+import RefundsContent from "../../../components/admin/refunds-content";
 import { LoadingSkeleton } from "@/components/payments/LoadingSkeleton";
 
 export default function AdminRefundsPage() {
