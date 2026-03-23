@@ -4,8 +4,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { connection, NextResponse } from "next/server";
 
 export async function GET() {
+  await connection();
   try {
-    await connection();
     const supabase = await createSupabaseServerClient();
 
     const {
