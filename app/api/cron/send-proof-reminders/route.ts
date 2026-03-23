@@ -1,16 +1,11 @@
 // app/api/cron/send-proof-reminders/route.ts
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { stripe } from "@/lib/stripe/client";
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
-  // Verify webhook secret
+export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,80 +14,84 @@ export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
 
   try {
-    // Get goals needing proof reminders
-    const { data: goalsNeedingProof, error } = await supabase.rpc(
-      "check_recurring_proofs",
-    );
+    // Find goals due in next 24 hours that require proof
+    const { data: goals, error } = await supabase
+      .from("goals")
+      .select(
+        `
+        *,
+        profiles!goals_user_id_fkey (
+          email,
+          full_name
+        )
+      `,
+      )
+      .eq("status", "active")
+      .eq("proof_required", true)
+      .gt("target_date", new Date().toISOString())
+      .lte(
+        "target_date",
+        new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      );
 
     if (error) throw error;
 
-    // Send reminders for each goal
-    const remindersSent = [];
+    const results = [];
 
-    for (const goal of goalsNeedingProof) {
-      // Get user email
-      const { data: user } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("id", goal.user_id)
-        .single();
-
-      if (user?.email) {
-        // Send email reminder
-        await resend.emails.send({
-          from: "LOCKED <notifications@locked.app>",
-          to: user.email,
-          subject:
-            goal.status === "overdue"
-              ? "⚠️ Proof Submission Overdue - Penalty Pending"
-              : "🔔 Proof Submission Due Soon",
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1>${goal.status === "overdue" ? "Proof Submission Overdue" : "Proof Reminder"}</h1>
-              <p>Your recurring goal requires proof submission.</p>
-              
-              <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>Status:</strong> ${goal.status === "overdue" ? "OVERDUE" : "DUE SOON"}</p>
-                ${
-                  goal.status === "overdue"
-                    ? `<p><strong>Penalty:</strong> $${(goal.penalty_amount / 100).toFixed(2)} will be charged if not submitted within 24 hours</p>`
-                    : `<p><strong>Due:</strong> Within 24 hours</p>`
-                }
-              </div>
-              
-              <a href="${process.env.NEXTAUTH_URL}/dashboard/goals/${goal.goal_id}" 
-                 style="display: inline-block; background: #000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0;">
-                Submit Proof Now
-              </a>
-              
-              <p style="margin-top: 30px; color: #666; font-size: 14px;">
-                This is an automated reminder from LOCKED Accountability.
-              </p>
-            </div>
-          `,
+    for (const goal of goals || []) {
+      try {
+        // Create notification
+        await supabase.from("notifications").insert({
+          user_id: goal.user_id,
+          type: "proof_reminder",
+          title: "Proof Submission Reminder",
+          message: `Your goal "${goal.title}" needs proof submission within 24 hours.`,
+          metadata: {
+            goal_id: goal.id,
+            deadline: goal.target_date,
+          },
         });
 
-        remindersSent.push({
-          goal_id: goal.goal_id,
-          user_id: goal.user_id,
-          status: goal.status,
-          email_sent: true,
+        results.push({ goal_id: goal.id, status: "reminder_sent" });
+      } catch (reminderError: any) {
+        console.error(
+          `Failed to send reminder for goal ${goal.id}:`,
+          reminderError,
+        );
+        results.push({
+          goal_id: goal.id,
+          status: "failed",
+          error: reminderError.message,
         });
       }
     }
 
+    // Log cron execution
+    await supabase.from("cron_logs").insert({
+      job_name: "send-proof-reminders",
+      status: "success",
+      processed: goals?.length || 0,
+      executed_at: new Date().toISOString(),
+    });
+
     return NextResponse.json({
       success: true,
-      reminders_sent: remindersSent.length,
-      details: remindersSent,
+      processed: goals?.length || 0,
+      results,
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Proof reminder error:", error);
+    console.error("Send proof reminders error:", error);
+
+    await supabase.from("cron_logs").insert({
+      job_name: "send-proof-reminders",
+      status: "failed",
+      error: error instanceof Error ? error.message : "Unknown error",
+      executed_at: new Date().toISOString(),
+    });
+
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to send proof reminders",
-      },
+      { error: "Failed to send proof reminders" },
       { status: 500 },
     );
   }

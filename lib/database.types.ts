@@ -61,6 +61,51 @@ export type Database = {
           },
         ]
       }
+      cron_logs: {
+        Row: {
+          cancelled: number | null
+          emails_sent: number | null
+          error: string | null
+          executed_at: string | null
+          failed: number | null
+          id: string
+          job_name: string
+          processed: number | null
+          results: Json | null
+          status: string
+          successful: number | null
+          synced: number | null
+        }
+        Insert: {
+          cancelled?: number | null
+          emails_sent?: number | null
+          error?: string | null
+          executed_at?: string | null
+          failed?: number | null
+          id?: string
+          job_name: string
+          processed?: number | null
+          results?: Json | null
+          status: string
+          successful?: number | null
+          synced?: number | null
+        }
+        Update: {
+          cancelled?: number | null
+          emails_sent?: number | null
+          error?: string | null
+          executed_at?: string | null
+          failed?: number | null
+          id?: string
+          job_name?: string
+          processed?: number | null
+          results?: Json | null
+          status?: string
+          successful?: number | null
+          synced?: number | null
+        }
+        Relationships: []
+      }
       goal_checkins: {
         Row: {
           completed_at: string | null
@@ -348,6 +393,47 @@ export type Database = {
           {
             foreignKeyName: "job_queue_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

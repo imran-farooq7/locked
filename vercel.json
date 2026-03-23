@@ -1,8 +1,13 @@
 {
   "crons": [
+    { "path": "/api/cron/process-penalties", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/check-expired-goals", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/send-proof-reminders", "schedule": "*/5 * * * *" },
     {
-      "path": "/api/cron/check-deadlines",
+      "path": "/api/cron/sync-stripe-subscriptions",
       "schedule": "*/5 * * * *"
-    }
+    },
+    { "path": "/api/cron/send-daily-summaries", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/cleanup-old-data", "schedule": "*/5 * * * *" }
   ]
 }

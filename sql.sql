@@ -687,3 +687,64 @@ begin
   end loop;
 end;
 $$;
+-- Create notifications table
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at);
+
+-- Enable RLS
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies
+CREATE POLICY "Users can view own notifications"
+  ON public.notifications FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own notifications"
+  ON public.notifications FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "System can insert notifications"
+  ON public.notifications FOR INSERT
+  WITH CHECK (true);
+
+-- Grant permissions
+GRANT ALL ON public.notifications TO authenticated, service_role;
+GRANT SELECT ON public.notifications TO anon;
+-- Create cron_logs table for tracking
+CREATE TABLE IF NOT EXISTS public.cron_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  job_name TEXT NOT NULL,
+  status TEXT NOT NULL,
+  processed INTEGER DEFAULT 0,
+  successful INTEGER DEFAULT 0,
+  failed INTEGER DEFAULT 0,
+  emails_sent INTEGER DEFAULT 0,
+  synced INTEGER DEFAULT 0,
+  cancelled INTEGER DEFAULT 0,
+  results JSONB,
+  error TEXT,
+  executed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for cron logs (admin only)
+ALTER TABLE public.cron_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admin can view cron logs"
+  ON public.cron_logs FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND is_admin = TRUE
+  ));
