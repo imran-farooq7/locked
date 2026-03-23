@@ -1,12 +1,11 @@
 // app/api/stripe/payment-methods/route.ts
 import { stripe } from "@/lib/stripe/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
+import { connection, NextResponse } from "next/server";
 
 export async function GET() {
   try {
+    await connection();
     const supabase = await createSupabaseServerClient();
 
     const {
