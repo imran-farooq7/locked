@@ -4,11 +4,11 @@
 import { usePaymentMethods } from "@/hooks/use-payment";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AddPaymentForm } from "./AddPaymentForm";
 import EmptyState from "./empty-state";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import PaymentMethodCard from "./payment-method-cards";
 import { SecurityNotice } from "./SecurityNotice";
+import { PaymentMethodForm } from "./AddPaymentForm";
 
 export default function PaymentMethods() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -55,12 +55,7 @@ export default function PaymentMethods() {
       </div>
 
       {/* Add Form */}
-      {showAddForm && (
-        <AddPaymentForm
-          onAdd={handleAdd}
-          onCancel={() => setShowAddForm(false)}
-        />
-      )}
+      {showAddForm && <PaymentMethodForm />}
 
       {/* Methods List */}
       {methods.length === 0 ? (

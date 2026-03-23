@@ -2,6 +2,7 @@
 import ProofSettingsForm from "@/components/proof/proof-settings-form";
 import ProofStatistics from "@/components/proof/ProofStatistics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { QuickActions } from "@/components/dashboard/QuickActions";
 
 type ProofSettings = {
   default_proof_type: "text" | "image" | "file";
@@ -76,68 +77,21 @@ function ProofGuidelines() {
   );
 }
 
-function QuickActions() {
-  const actions = [
-    { label: "View Proof History", action: () => {} },
-    {
-      label: "Download All Proofs",
-      action: () => {},
-    },
-    {
-      label: "Request Proof Review",
-      action: () => {},
-    },
-  ];
-
-  return (
-    <div className="border rounded-lg p-6">
-      <h3 className="font-semibold mb-4">Quick Actions</h3>
-      <div className="space-y-3">
-        {actions.map((action, index) => (
-          <button
-            key={index}
-            onClick={action.action}
-            className="w-full text-left p-3 border rounded hover:bg-gray-50 transition-colors"
-          >
-            {action.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default async function ProofSettingsPage() {
   const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return (
-      <div className="container mx-auto p-6 max-w-4xl">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">
-            Authentication Required
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Please log in to access proof settings.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   // Fetch user preferences and statistics in parallel
   const [preferencesResult, stats] = await Promise.all([
     supabase
       .from("user_preferences")
       .select("proof_settings")
-      .eq("user_id", user.id)
+      .eq("user_id", user!.id)
       .single(),
-    getProofStatistics(user.id),
+    getProofStatistics(user!.id),
   ]);
 
   const defaultSettings: ProofSettings = {

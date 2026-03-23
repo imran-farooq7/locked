@@ -1,5 +1,4 @@
-import { createSupabaseClient } from "@/lib/supabase/client";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 export interface PaymentMethod {
   id: string;
   brand: string;
@@ -12,69 +11,36 @@ export const usePaymentMethods = () => {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [isPending, startTransition] = useTransition();
 
-  const supabase = useMemo(() => createSupabaseClient(), []);
-
   const loadPaymentMethods = useCallback(() => {
     startTransition(async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+        const response = await fetch("/api/stripe/payment-methods", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
 
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("stripe_customer_id")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error("Profile lookup failed:", error);
+        if (!response.ok) {
+          console.error(
+            "Failed to load payment methods:",
+            response.status,
+            await response.text(),
+          );
           return;
         }
 
-        if (profile?.stripe_customer_id) {
-          // In production, fetch from Stripe API
-          // For demo, show mock data
-          setMethods([
-            {
-              id: "pm_1",
-              brand: "visa",
-              last4: "4242",
-              exp_month: 12,
-              exp_year: 2025,
-              isDefault: true,
-            },
-            {
-              id: "pm_2",
-              brand: "mastercard",
-              last4: "8888",
-              exp_month: 6,
-              exp_year: 2024,
-              isDefault: false,
-            },
-          ]);
-        }
+        const data = (await response.json()) as { methods?: PaymentMethod[] };
+        setMethods(data.methods ?? []);
       } catch (error) {
         console.error("Failed to load payment methods:", error);
       }
     });
-  }, [supabase]);
+  }, []);
 
   const addPaymentMethod = () => {
-    // This would integrate with Stripe Elements
-    // For demo, add a mock method
-    setMethods((prev) => [
-      ...prev,
-      {
-        id: `pm_${Date.now()}`,
-        brand: "amex",
-        last4: "1234",
-        exp_month: 3,
-        exp_year: 2026,
-        isDefault: false,
-      },
-    ]);
+    // Payment methods are added via Stripe Elements + API.
+    // Call loadPaymentMethods after a successful add to refresh the list.
+    loadPaymentMethods();
   };
 
   const removePaymentMethod = (methodId: string) => {

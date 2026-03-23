@@ -1,69 +1,120 @@
-// components/payments/payment-methods.tsx
+// components/payments/payment-method-form.tsx
 "use client";
-export const AddPaymentForm = ({
-  onAdd,
-  onCancel,
-}: {
-  onAdd: () => void;
-  onCancel: () => void;
-}) => (
-  <div className="border rounded-lg p-6">
-    <div className="flex justify-between items-center mb-4">
-      <h4 className="font-medium">Add Payment Method</h4>
+
+import { useState } from "react";
+import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { createSupabaseClient } from "@/lib/supabase/client";
+
+export function PaymentMethodForm() {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const supabase = createSupabaseClient();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return; // Stripe.js hasn't loaded yet
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Get user's Stripe customer ID
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.stripe_customer_id) {
+        throw new Error("No Stripe customer found");
+      }
+
+      // Create payment method
+      const cardElement = elements.getElement(CardElement);
+      const { error: stripeError, paymentMethod } =
+        await stripe.createPaymentMethod({
+          type: "card",
+          card: cardElement!,
+        });
+
+      if (stripeError) throw stripeError;
+
+      // Attach payment method to customer
+      const response = await fetch("/api/stripe/attach-payment-method", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentMethodId: paymentMethod.id,
+          customerId: profile.stripe_customer_id,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to attach payment method");
+
+      setSuccess(true);
+      cardElement?.clear();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const CARD_ELEMENT_OPTIONS = {
+    style: {
+      base: {
+        fontSize: "16px",
+        color: "#424770",
+        "::placeholder": {
+          color: "#aab7c4",
+        },
+        padding: "10px 12px",
+      },
+      invalid: {
+        color: "#9e2146",
+      },
+    },
+    hidePostalCode: true, // We'll collect this separately if needed
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="border rounded-lg p-4 bg-white">
+        <CardElement options={CARD_ELEMENT_OPTIONS} />
+      </div>
+
+      {error && (
+        <div className="text-red-600 text-sm bg-red-50 p-3 rounded">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="text-green-600 text-sm bg-green-50 p-3 rounded">
+          Payment method added successfully!
+        </div>
+      )}
+
       <button
-        onClick={onCancel}
-        className="text-gray-500 hover:text-gray-700"
-        aria-label="Cancel"
+        type="submit"
+        disabled={!stripe || isLoading}
+        className="w-full bg-black text-white py-3 rounded-lg font-medium disabled:opacity-50"
       >
-        ✕
+        {isLoading ? "Adding..." : "Add Payment Method"}
       </button>
-    </div>
-
-    {/* Stripe Elements would go here */}
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-2">Card Number</label>
-        <input
-          type="text"
-          placeholder="4242 4242 4242 4242"
-          className="w-full border rounded-lg p-3"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">Expiration</label>
-          <input
-            type="text"
-            placeholder="MM/YY"
-            className="w-full border rounded-lg p-3"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">CVC</label>
-          <input
-            type="text"
-            placeholder="123"
-            className="w-full border rounded-lg p-3"
-          />
-        </div>
-      </div>
-
-      <div className="flex space-x-3">
-        <button
-          onClick={onAdd}
-          className="flex-1 bg-black text-white rounded-lg py-3 font-medium"
-        >
-          Add Card
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-6 py-3 border rounded-lg font-medium"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-);
+    </form>
+  );
+}

@@ -10,6 +10,7 @@ import { ToggleSwitch } from "./ToggleSwitch";
 import { Suspense } from "react";
 import { LoadingSkeleton } from "@/components/payments/LoadingSkeleton";
 import Stats from "./Stats";
+import { StripeProvider } from "@/lib/stripe/stripe-provider";
 
 export default async function PaymentSettingsPage() {
   return (
@@ -38,7 +39,9 @@ export default async function PaymentSettingsPage() {
           {/* Payment Methods */}
           <div>
             <SidebarSection icon={CreditCard} title="Payment Methods">
-              <PaymentMethods />
+              <StripeProvider>
+                <PaymentMethods />
+              </StripeProvider>
             </SidebarSection>
           </div>
 
