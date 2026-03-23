@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { calculateTimeRemaining, isGoalExpired } from "@/lib/goal-utils";
 import GoalActions from "@/components/goals/goal-actions";
 import SimplifiedGoalActions from "@/components/goals/goal-actions";
+import { Suspense } from "react";
 
 interface GoalDetailPageProps {
   params: Promise<{ id: string }>;
@@ -28,7 +29,40 @@ function getChargeStatusClassName(status: string | null) {
   return "text-gray-600";
 }
 
-export default async function GoalDetailPage({ params }: GoalDetailPageProps) {
+export default function GoalDetailPage({ params }: GoalDetailPageProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto p-6 max-w-4xl">
+          <div className="mb-8">
+            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="mt-3 h-4 w-96 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="h-20 border rounded-lg bg-gray-50 animate-pulse" />
+            <div className="h-20 border rounded-lg bg-gray-50 animate-pulse" />
+            <div className="h-20 border rounded-lg bg-gray-50 animate-pulse" />
+            <div className="h-20 border rounded-lg bg-gray-50 animate-pulse" />
+          </div>
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="h-40 border rounded-lg bg-gray-50 animate-pulse" />
+              <div className="h-40 border rounded-lg bg-gray-50 animate-pulse" />
+            </div>
+            <div className="space-y-6">
+              <div className="h-40 border rounded-lg bg-gray-50 animate-pulse" />
+              <div className="h-40 border rounded-lg bg-gray-50 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <GoalDetailContent params={params} />
+    </Suspense>
+  );
+}
+
+async function GoalDetailContent({ params }: GoalDetailPageProps) {
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
 

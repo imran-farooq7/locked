@@ -3,6 +3,8 @@ import { stripe } from "@/lib/stripe/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const supabase = await createSupabaseServerClient();
@@ -44,8 +46,7 @@ export async function GET() {
     const defaultPaymentMethodId =
       typeof customer === "string"
         ? null
-        : ((customer.invoice_settings?.default_payment_method ??
-            null) as string | null);
+        : ((customer.deleted?.valueOf ?? null) as string | null);
 
     const methods = paymentMethods.data.flatMap((method) => {
       const card = method.card;
