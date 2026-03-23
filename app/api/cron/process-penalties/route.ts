@@ -3,8 +3,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe/client";
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

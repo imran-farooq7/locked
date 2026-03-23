@@ -5,9 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 
-export const runtime = "edge";
-export const dynamic = "force-dynamic";
-
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const signature = (await headers()).get("stripe-signature") as string;
@@ -122,9 +119,7 @@ const handlePaymentIntentSucceeded = async (
 const handleInvoicePaid = async (invoice: Stripe.Invoice, supabase: any) => {
   const subscriptionRef = invoice.parent?.subscription_details?.subscription;
   const subscriptionId =
-    typeof subscriptionRef === "string"
-      ? subscriptionRef
-      : subscriptionRef?.id;
+    typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef?.id;
 
   if (subscriptionId) {
     // This is a recurring penalty payment
@@ -186,7 +181,6 @@ const handleSubscriptionDeleted = async (
   }
 };
 const handleChargeSucceeded = async (charge: Stripe.Charge, supabase: any) => {
-
   // Log charge for reconciliation
   await supabase.from("charges").insert({
     stripe_charge_id: charge.id,
@@ -203,12 +197,9 @@ const handleInvoicePaymentFailed = async (
   invoice: Stripe.Invoice,
   supabase: any,
 ) => {
-
   const subscriptionRef = invoice.parent?.subscription_details?.subscription;
   const subscriptionId =
-    typeof subscriptionRef === "string"
-      ? subscriptionRef
-      : subscriptionRef?.id;
+    typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef?.id;
   const subscription = subscriptionId
     ? await stripe.subscriptions.retrieve(subscriptionId)
     : null;
@@ -240,7 +231,6 @@ const handleSubscriptionUpdated = async (
   subscription: Stripe.Subscription,
   supabase: any,
 ) => {
-
   const goalId = subscription.metadata.goal_id;
 
   if (goalId) {
@@ -254,7 +244,6 @@ const handleSubscriptionUpdated = async (
   }
 };
 const handleChargeRefunded = async (charge: Stripe.Charge, supabase: any) => {
-
   // Find and update the penalty charge
   const { data: penalty } = await supabase
     .from("penalty_charges")
