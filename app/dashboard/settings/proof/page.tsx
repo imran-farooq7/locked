@@ -3,6 +3,7 @@ import ProofSettingsForm from "@/components/proof/proof-settings-form";
 import ProofStatistics from "@/components/proof/ProofStatistics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { Suspense } from "react";
 
 type ProofSettings = {
   default_proof_type: "text" | "image" | "file";
@@ -77,7 +78,34 @@ function ProofGuidelines() {
   );
 }
 
-export default async function ProofSettingsPage() {
+export default function ProofSettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto p-6 max-w-4xl">
+          <div className="mb-8">
+            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="mt-3 h-4 w-96 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="h-48 border rounded-lg bg-gray-50 animate-pulse" />
+              <div className="h-40 border rounded-lg bg-gray-50 animate-pulse" />
+            </div>
+            <div className="space-y-6">
+              <div className="h-40 border rounded-lg bg-gray-50 animate-pulse" />
+              <div className="h-40 border rounded-lg bg-gray-50 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <ProofSettingsContent />
+    </Suspense>
+  );
+}
+
+async function ProofSettingsContent() {
   const supabase = await createSupabaseServerClient();
 
   const {
