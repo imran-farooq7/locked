@@ -25,20 +25,44 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Admin helper (bypasses RLS to avoid policy recursion)
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public, row_security = off
+as $$
+  select coalesce(
+    (select is_admin from public.profiles where id = auth.uid()),
+    false
+  );
+$$;
+
 -- Minimal fix for existing policies
 DO $$ 
 BEGIN
+  -- Drop the recursive admin policy if it exists
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'profiles'
+    AND policyname = 'Admins can view all profiles'
+  ) THEN
+    EXECUTE 'DROP POLICY "Admins can view all profiles" ON profiles';
+  END IF;
+
   -- Skip if policies already exist
   IF EXISTS (
     SELECT 1 FROM pg_policies 
     WHERE tablename = 'profiles' 
     AND policyname = 'Users can view own profile'
   ) THEN
-    RAISE NOTICE 'Policy already exists, skipping creation';
+    ALTER POLICY "Users can view own profile"
+      ON profiles
+      USING (auth.uid() = id OR public.is_admin());
   ELSE
     CREATE POLICY "Users can view own profile"
       ON profiles FOR SELECT
-      USING (auth.uid() = id);
+      USING (auth.uid() = id OR public.is_admin());
   END IF;
   
   IF EXISTS (

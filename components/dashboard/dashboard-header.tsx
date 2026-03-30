@@ -6,11 +6,14 @@ import Link from "next/link";
 
 const getUserProfile = cache(async (userId: string) => {
   const supabase = await createSupabaseServerClient();
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
     .select("is_admin")
     .eq("id", userId)
     .single();
+  if (error) {
+    console.error("Failed to load profile:", error);
+  }
   return profile;
 });
 const getCurrentUser = cache(async () => {
@@ -24,6 +27,7 @@ const getCurrentUser = cache(async () => {
 export default async function DashboardHeader() {
   const user = await getCurrentUser();
   const profile = await getUserProfile(user!.id);
+  console.log(profile);
 
   return (
     <div className="flex justify-between items-center">
